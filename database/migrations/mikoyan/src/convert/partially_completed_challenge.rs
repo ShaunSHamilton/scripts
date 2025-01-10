@@ -51,7 +51,8 @@ impl<'de> serde::de::Visitor<'de> for PartiallyCompletedChallengeVisitor {
             }
         }
 
-        let completed_date = completed_date.unwrap_or(DateTime::now().timestamp_millis());
+        let completed_date =
+            completed_date.unwrap_or(DateTime::now().timestamp_millis().to_millis());
         let id = id.unwrap_or_default();
 
         Ok(PartiallyCompletedChallenge { completed_date, id })

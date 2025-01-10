@@ -5,10 +5,10 @@ edition = "2021"
 
 
 [dependencies]
-clap = { version = "4.5.4", features = ["derive"] }
-cmp = "0.1.0"
+clap = { version = "4.5.26", features = ["derive"] }
+cmp = "0.1.1"
 indicatif = "0.17.8"
-futures-util = "0.3.30"
-mongodb = "2.8.2"
-serde = { version = "1.0.203", features = ["derive"] }
-tokio = { version = "1.37.0", features = ["fs"] }
+futures-util = "0.3.31"
+mongodb = "3.1.1"
+serde = { version = "1.0.217", features = ["derive"] }
+tokio = { version = "1.43.0", features = ["fs"] }

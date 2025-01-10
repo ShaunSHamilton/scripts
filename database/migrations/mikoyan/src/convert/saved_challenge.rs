@@ -32,9 +32,9 @@ impl<'de> serde::de::Visitor<'de> for SavedChallengeVisitor {
                     }
 
                     challenge_type = match map.next_value()? {
-                        Bson::Int32(v) => Some(v),
-                        Bson::Int64(v) => Some(v as i32),
-                        Bson::Double(v) => Some(v as i32),
+                        Bson::Int32(v) => Some(v as u32),
+                        Bson::Int64(v) => Some(v as u32),
+                        Bson::Double(v) => Some(v as u32),
                         Bson::String(v) => {
                             if let Ok(v) = v.parse() {
                                 Some(v)
@@ -100,7 +100,8 @@ impl<'de> serde::de::Visitor<'de> for SavedChallengeVisitor {
         let challenge_type = challenge_type.unwrap_or_default();
         let files = files.unwrap_or_default();
         let id = id.unwrap_or_default();
-        let last_saved_date = last_saved_date.unwrap_or(DateTime::now().timestamp_millis());
+        let last_saved_date =
+            last_saved_date.unwrap_or(DateTime::now().timestamp_millis().to_millis());
 
         Ok(SavedChallenge {
             challenge_type,

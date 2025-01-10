@@ -1,8 +1,8 @@
 use futures_util::TryStreamExt;
 use mongodb::{
     bson::{doc, Document},
-    options::ClientOptions,
-    Client, Collection,
+    options::{ClientOptions, InsertOneModel},
+    Client, Collection, Namespace,
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use tokio::task::JoinHandle;
@@ -21,7 +21,7 @@ pub async fn get_collection(
     // Ping the server to see if you can connect to the cluster
     client
         .database("freecodecamp")
-        .run_command(doc! {"ping": 1}, None)
+        .run_command(doc! {"ping": 1})
         .await?;
     let db = client.database("freecodecamp");
 
@@ -33,15 +33,9 @@ pub async fn get_collection(
 async fn main() -> Result<(), mongodb::error::Error> {
     let mut handles = Vec::new();
 
-    for _ in 0..7 {
-        let handle: JoinHandle<Result<(), mongodb::error::Error>> = tokio::spawn(async move {
-            let user_collection = get_collection(
-                "mongodb://127.0.0.1:27017/freecodecamp?directConnection=true",
-                "user",
-            )
-            .await?;
-            seed_users(&user_collection).await
-        });
+    for _ in 0..3 {
+        let handle: JoinHandle<Result<(), mongodb::error::Error>> =
+            tokio::spawn(async move { seed_users().await });
 
         handles.push(handle);
     }
@@ -55,8 +49,24 @@ async fn main() -> Result<(), mongodb::error::Error> {
     Ok(())
 }
 
-async fn seed_users(user_collection: &Collection<Document>) -> Result<(), mongodb::error::Error> {
-    let mut cursor = user_collection.find(doc! {}, None).await?;
+async fn seed_users() -> Result<(), mongodb::error::Error> {
+    let uri = "";
+    let mut client_options = ClientOptions::parse(uri).await?;
+
+    client_options.app_name = Some("Rust Mongeese".to_string());
+
+    // Get a handle to the cluster
+    let client = Client::with_options(client_options)?;
+
+    // Ping the server to see if you can connect to the cluster
+    client
+        .database("freecodecamp")
+        .run_command(doc! {"ping": 1})
+        .await?;
+    let db = client.database("freecodecamp");
+
+    let user_collection = db.collection::<Document>("user");
+    let mut cursor = user_collection.find(doc! {}).await?;
 
     let mut rng: StdRng = StdRng::from_entropy();
 
@@ -78,10 +88,26 @@ async fn seed_users(user_collection: &Collection<Document>) -> Result<(), mongod
 
         docs.push(new_user);
 
-        if docs.len() == 1000 {
-            user_collection.insert_many(&docs, None).await?;
+        if docs.len() == 100 {
+            // user_collection.insert_many(&docs).await?;
+
+            let models = docs
+                .iter()
+                .map(|doc| {
+                    let model = InsertOneModel::builder()
+                        .namespace(Namespace {
+                            db: "freecodecamp".to_string(),
+                            coll: "user".to_string(),
+                        })
+                        .document(doc.clone())
+                        .build();
+                    mongodb::options::WriteModel::InsertOne(model)
+                })
+                .collect::<Vec<_>>();
+            client.bulk_write(models).await?;
+
             docs.clear();
-            cursor = user_collection.find(doc! {}, None).await?;
+            cursor = user_collection.find(doc! {}).await?;
         }
         // user_collection.insert_one(new_user, None).await?;
     }

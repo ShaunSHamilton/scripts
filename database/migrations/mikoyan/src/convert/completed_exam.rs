@@ -32,9 +32,9 @@ impl<'de> serde::de::Visitor<'de> for CompletedExamVisitor {
                     }
 
                     challenge_type = match map.next_value()? {
-                        Bson::Int32(v) => Some(v),
-                        Bson::Int64(v) => Some(v as i32),
-                        Bson::Double(v) => Some(v as i32),
+                        Bson::Int32(v) => Some(v as u32),
+                        Bson::Int64(v) => Some(v as u32),
+                        Bson::Double(v) => Some(v as u32),
                         _ => None,
                     };
                 }

@@ -45,17 +45,17 @@ where
 
     // Handle seconds, but assume milliseconds
     let num = if s.len() == 10 {
-        let num = s.parse::<i64>().unwrap();
+        let num = s.parse::<u64>().unwrap();
         num * 1000
     } else {
-        s.parse::<i64>().unwrap()
+        s.parse::<u64>().unwrap()
     };
 
-    DateTime::from_millis(num)
+    DateTime::from_millis(num as i64)
 }
 
 pub trait ToMillis: ToString {
-    fn to_millis(&self) -> i64 {
+    fn to_millis(&self) -> u64 {
         let s = self.to_string();
 
         // If float, remove the decimal part
@@ -72,21 +72,22 @@ pub trait ToMillis: ToString {
 
         // Handle seconds, but assume milliseconds
         if s.len() == 10 {
-            let num = s.parse::<i64>().unwrap();
+            let num = s.parse::<u64>().unwrap();
             num * 1000
         } else {
-            s.parse::<i64>().unwrap()
+            s.parse::<u64>().unwrap()
         }
     }
 }
 
 impl ToMillis for i64 {}
+impl ToMillis for u64 {}
 impl ToMillis for i32 {}
 impl ToMillis for f64 {}
 impl ToMillis for f32 {}
 impl ToMillis for DateTime {
-    fn to_millis(&self) -> i64 {
-        let millis = self.timestamp_millis();
+    fn to_millis(&self) -> u64 {
+        let millis = self.timestamp_millis() as u64;
         if millis < 10_000_000_000 {
             return millis * 1000;
         }
@@ -94,8 +95,8 @@ impl ToMillis for DateTime {
     }
 }
 impl ToMillis for Timestamp {
-    fn to_millis(&self) -> i64 {
-        let millis = (self.time as i64) * 1000;
+    fn to_millis(&self) -> u64 {
+        let millis = (self.time as u64) * 1000;
         if millis < 10_000_000_000 {
             return millis * 1000;
         }

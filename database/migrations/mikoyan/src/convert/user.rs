@@ -174,9 +174,9 @@ impl<'de> serde::de::Visitor<'de> for UserVisitor {
                     }
 
                     current_challenge_id = match map.next_value()? {
-                        Bson::String(v) => Some(v),
-                        Bson::ObjectId(v) => Some(v.to_hex()),
-                        _ => None,
+                        Bson::String(v) => Some(NOption::Some(v)),
+                        Bson::ObjectId(v) => Some(NOption::Some(v.to_hex())),
+                        _ => Some(NOption::Null),
                     };
                 }
                 "donationEmails" => {
@@ -723,7 +723,7 @@ impl<'de> serde::de::Visitor<'de> for UserVisitor {
                                         progress_timestamps.push(v.to_millis());
                                     }
                                     Bson::String(v) => {
-                                        if let Ok(v) = v.parse::<i64>() {
+                                        if let Ok(v) = v.parse::<u64>() {
                                             progress_timestamps.push(v.to_millis());
                                         }
                                     }
@@ -748,13 +748,13 @@ impl<'de> serde::de::Visitor<'de> for UserVisitor {
                                         progress_timestamps.push(v.to_millis());
                                     }
                                     Bson::Int32(v) => {
-                                        progress_timestamps.push(v as i64);
+                                        progress_timestamps.push(v.to_millis());
                                     }
                                     Bson::Int64(v) => {
-                                        progress_timestamps.push(v);
+                                        progress_timestamps.push(v.to_millis());
                                     }
                                     Bson::String(v) => {
-                                        if let Ok(v) = v.parse::<i64>() {
+                                        if let Ok(v) = v.parse::<u64>() {
                                             progress_timestamps.push(v.to_millis());
                                         }
                                     }
@@ -775,7 +775,7 @@ impl<'de> serde::de::Visitor<'de> for UserVisitor {
                                                     pts.push(v.to_millis());
                                                 }
                                                 Bson::String(v) => {
-                                                    if let Ok(v) = v.parse::<i64>() {
+                                                    if let Ok(v) = v.parse::<u64>() {
                                                         pts.push(v.to_millis());
                                                     }
                                                 }
@@ -923,13 +923,13 @@ impl<'de> serde::de::Visitor<'de> for UserVisitor {
                             for year in array {
                                 match year {
                                     Bson::String(v) => {
-                                        if let Ok(v) = v.parse::<i32>() {
+                                        if let Ok(v) = v.parse::<u32>() {
                                             years_top_contributor.push(v);
                                         }
                                     }
-                                    Bson::Int32(v) => years_top_contributor.push(v),
-                                    Bson::Int64(v) => years_top_contributor.push(v as i32),
-                                    Bson::Double(v) => years_top_contributor.push(v as i32),
+                                    Bson::Int32(v) => years_top_contributor.push(v as u32),
+                                    Bson::Int64(v) => years_top_contributor.push(v as u32),
+                                    Bson::Double(v) => years_top_contributor.push(v as u32),
                                     _ => {}
                                 }
                             }
@@ -986,6 +986,10 @@ impl<'de> serde::de::Visitor<'de> for UserVisitor {
         let is_resp_web_design_cert = is_resp_web_design_cert.unwrap_or_default();
         let is_sci_comp_py_cert_v7 = is_sci_comp_py_cert_v7.unwrap_or_default();
         let keyboard_shortcuts = keyboard_shortcuts.unwrap_or_default();
+        let last_updated_at_in_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
         let linkedin = linkedin.unwrap_or_default();
         let location = location.unwrap_or_default();
         let name = name.unwrap_or_default();
@@ -1048,6 +1052,7 @@ impl<'de> serde::de::Visitor<'de> for UserVisitor {
             is_resp_web_design_cert,
             is_sci_comp_py_cert_v7,
             keyboard_shortcuts,
+            last_updated_at_in_ms,
             linkedin,
             location,
             name,
@@ -1116,7 +1121,7 @@ mod tests {
             accepted_privacy_terms: bool::default(),
             completed_challenges: Vec::default(),
             completed_exams: Vec::default(),
-            current_challenge_id: String::default(),
+            current_challenge_id: NOption::default(),
             donation_emails: Vec::default(),
             email: "non-empty string".to_string(),
             email_auth_link_ttl: NOption::default(),
@@ -1150,6 +1155,7 @@ mod tests {
             is_resp_web_design_cert: bool::default(),
             is_sci_comp_py_cert_v7: bool::default(),
             keyboard_shortcuts: bool::default(),
+            last_updated_at_in_ms: Default::default(),
             linkedin: String::default(),
             location: String::default(),
             name: String::default(),
@@ -1356,7 +1362,7 @@ mod tests {
                 solution: NOption::Null,
             }],
             completed_exams: vec![],
-            current_challenge_id: object_id.to_hex(),
+            current_challenge_id: NOption::Some(object_id.to_hex()),
             donation_emails: vec![],
             email: "fcc@freecodecamp.org".to_string(),
             email_auth_link_ttl: NOption::Null,
@@ -1390,6 +1396,7 @@ mod tests {
             is_resp_web_design_cert: false,
             is_sci_comp_py_cert_v7: false,
             keyboard_shortcuts: false,
+            last_updated_at_in_ms: 0,
             linkedin: "".to_string(),
             location: "".to_string(),
             name: "name".to_string(),
@@ -1405,8 +1412,8 @@ mod tests {
             progress_timestamps: vec![
                 1620000000 * 1000,
                 10_000_000_000,
-                16890000000i64,
-                16890000001i64,
+                16890000000u64,
+                16890000001u64,
             ],
             rand: f64::default(),
             saved_challenges: vec![SavedChallenge {
@@ -1513,7 +1520,7 @@ mod tests {
             accepted_privacy_terms: true,
             completed_challenges: vec![],
             completed_exams: vec![],
-            current_challenge_id: object_id.to_hex(),
+            current_challenge_id: NOption::Some(object_id.to_hex()),
             donation_emails: vec!["fcc@freecodecamp.org".to_string()],
             email: "fcc@freecodecamp.org".to_string(),
             email_auth_link_ttl: email_auth_link_ttl.clone(),
@@ -1547,6 +1554,7 @@ mod tests {
             is_resp_web_design_cert: false,
             is_sci_comp_py_cert_v7: false,
             keyboard_shortcuts: false,
+            last_updated_at_in_ms: 0,
             linkedin: "".to_string(),
             location: "".to_string(),
             name: "name".to_string(),
@@ -1627,6 +1635,7 @@ mod tests {
         assert_eq!(doc.get_bool("isRespWebDesignCert").unwrap(), false);
         assert_eq!(doc.get_bool("isSciCompPyCertV7").unwrap(), false);
         assert_eq!(doc.get_bool("keyboardShortcuts").unwrap(), false);
+        assert_eq!(doc.get_i64("lastUpdatedAtInMS").unwrap(), 0);
         assert_eq!(doc.get_str("linkedin").unwrap(), "");
         assert_eq!(doc.get_str("location").unwrap(), "");
         assert_eq!(doc.get_str("name").unwrap(), "name");

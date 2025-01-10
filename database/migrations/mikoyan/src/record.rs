@@ -23,7 +23,7 @@ pub struct User {
     pub accepted_privacy_terms: bool,
     pub completed_challenges: Vec<CompletedChallenge>,
     pub completed_exams: Vec<CompletedExam>,
-    pub current_challenge_id: String,
+    pub current_challenge_id: NOption<String>,
     pub donation_emails: Vec<String>,
     pub email: String,
     #[serde(rename = "emailAuthLinkTTL")]
@@ -61,6 +61,8 @@ pub struct User {
     pub is_resp_web_design_cert: bool,
     pub is_sci_comp_py_cert_v7: bool,
     pub keyboard_shortcuts: bool,
+    #[serde(rename = "lastUpdatedAtInMS")]
+    pub last_updated_at_in_ms: u64,
     pub linkedin: String,
     pub location: String,
     pub name: String,
@@ -71,8 +73,7 @@ pub struct User {
     pub portfolio: Vec<Portfolio>,
     #[serde(rename = "profileUI")]
     pub profile_ui: ProfileUI,
-    pub progress_timestamps: Vec<i64>,
-    // This is unnecessary, but will continue to be added to new records until LB migration
+    pub progress_timestamps: Vec<u64>,
     pub rand: f64,
     pub saved_challenges: Vec<SavedChallenge>,
     pub send_quincy_email: bool,
@@ -82,14 +83,14 @@ pub struct User {
     pub username: String,
     pub username_display: String,
     pub website: String,
-    pub years_top_contributor: Vec<i32>,
+    pub years_top_contributor: Vec<u32>,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CompletedChallenge {
-    pub challenge_type: NOption<i32>,
-    pub completed_date: i64,
+    pub challenge_type: NOption<u32>,
+    pub completed_date: u64,
     pub files: Vec<File>,
     pub github_link: NOption<String>,
     pub id: String,
@@ -100,8 +101,8 @@ pub struct CompletedChallenge {
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CompletedExam {
-    pub challenge_type: i32,
-    pub completed_date: i64,
+    pub challenge_type: u32,
+    pub completed_date: u64,
     pub exam_results: ExamResults,
     pub id: String,
 }
@@ -109,9 +110,9 @@ pub struct CompletedExam {
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ExamResults {
-    pub exam_time_in_seconds: i32,
-    pub number_of_correct_answers: i32,
-    pub number_of_questions_in_exam: i32,
+    pub exam_time_in_seconds: u32,
+    pub number_of_correct_answers: u32,
+    pub number_of_questions_in_exam: u32,
     pub passed: bool,
     pub passing_percent: f64,
     pub percent_correct: f64,
@@ -120,7 +121,7 @@ pub struct ExamResults {
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PartiallyCompletedChallenge {
-    pub completed_date: i64,
+    pub completed_date: u64,
     pub id: String,
 }
 
@@ -168,10 +169,10 @@ impl Default for ProfileUI {
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SavedChallenge {
-    pub challenge_type: i32,
+    pub challenge_type: u32,
     pub files: Vec<File>,
     pub id: String,
-    pub last_saved_date: i64,
+    pub last_saved_date: u64,
 }
 
 #[derive(Debug, Serialize, PartialEq)]

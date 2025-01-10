@@ -99,13 +99,13 @@ differ/$ less diff.txt
 ### Use the Bin
 
 ```bash
-mikoyan --url <url> --num-threads <num-threads> --num_docs <num-docs> --logs <logs-path>
+mikoyan --url <url> --bulk-write --batch-size <batch-size> --logs <logs-path>
 ```
 
 Example:
 
 ```bash
-mikoyan --release -- --num-threads 4
+mikoyan --release -- --batch-size 1000
 ```
 
 More info:
