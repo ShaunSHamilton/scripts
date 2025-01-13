@@ -39,9 +39,11 @@ async fn main() -> Result<(), Error> {
 async fn connect_and_process(args: &Args) -> Result<(), mongodb::error::Error> {
     let client = db::client(&args.uri).await?;
     let user_collection = db::get_collection(&client, "user").await?;
-    let user_bulk_collection = db::get_collection(&client, "user_bulk").await?;
+    let insert_users_collection = db::get_collection(&client, "insert_users").await?;
 
-    let find_ops = FindOptions::builder().batch_size(1_000).build();
+    let user_collection_size = user_collection.estimated_document_count().await?;
+
+    let find_ops = FindOptions::builder().batch_size(args.batch_size).build();
     let mut cursor = user_collection.find(doc! {}).with_options(find_ops).await?;
 
     let mut logs_file = tokio::fs::OpenOptions::new()
@@ -50,13 +52,13 @@ async fn connect_and_process(args: &Args) -> Result<(), mongodb::error::Error> {
         .open(&args.logs)
         .await?;
 
-    let mut count: usize = 0;
-    let mut write_pool = Vec::with_capacity(args.batch_size);
+    let mut count: u32 = 0;
+    let mut write_pool = Vec::with_capacity(args.batch_size as usize);
     while let Some(user) = cursor.try_next().await? {
         match normalize_user(user) {
             Ok(normalized_user) => {
                 if args.bulk_write {
-                    let namespace = Namespace::new("freecodecamp", "user_bulk");
+                    let namespace = Namespace::new("freecodecamp", "bulk_users");
 
                     let replace_one_model = InsertOneModel::builder()
                         .document(normalized_user)
@@ -66,13 +68,13 @@ async fn connect_and_process(args: &Args) -> Result<(), mongodb::error::Error> {
                     let write_op = mongodb::options::WriteModel::InsertOne(replace_one_model);
                     write_pool.push(write_op);
 
-                    if write_pool.len() >= args.batch_size {
+                    if write_pool.len() >= args.batch_size as usize {
                         let _ = client.bulk_write(write_pool.clone()).await?;
                         write_pool.clear();
                         count += args.batch_size;
                     }
                 } else {
-                    let _ = user_bulk_collection.insert_one(normalized_user).await;
+                    let _ = insert_users_collection.insert_one(normalized_user).await;
                     count += 1;
                 }
             }
@@ -98,8 +100,8 @@ async fn connect_and_process(args: &Args) -> Result<(), mongodb::error::Error> {
             }
         }
 
-        if count % 10_000 == 0 {
-            println!("Processed {} users", count);
+        if count % (user_collection_size.div_ceil(100) as u32) == 0 {
+            println!("Users Processed: {} / {}", count, user_collection_size);
         }
     }
 

@@ -22,5 +22,5 @@ pub struct Args {
 
     /// Size of the batch to read and write
     #[arg(long, default_value = "100")]
-    pub batch_size: usize,
+    pub batch_size: u32,
 }
