@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use mongodb::bson::{self, de::Error, oid::ObjectId, DateTime, Document, Timestamp};
 
 use crate::record::User;
@@ -9,12 +11,12 @@ pub enum NormalizeError {
     ConfusedId { doc: Document },
 }
 
-pub fn normalize_user(user: Document) -> Result<Document, NormalizeError> {
+pub fn normalize_user(user: &Document) -> Result<Document, NormalizeError> {
     if let Ok(id) = user.get_object_id("_id") {
-        let normal_user: User = bson::from_document(user.clone()).map_err(|e| match e {
+        let mut normal_user: User = bson::from_document(user.clone()).map_err(|e| match e {
             Error::DeserializationError { message, .. } => {
                 if message.contains("expected a non-empty string email") {
-                    return NormalizeError::NullEmail { doc: user };
+                    return NormalizeError::NullEmail { doc: user.clone() };
                 }
                 NormalizeError::UnhandledType {
                     id,
@@ -23,10 +25,16 @@ pub fn normalize_user(user: Document) -> Result<Document, NormalizeError> {
             }
             _ => NormalizeError::UnhandledType { id, error: e },
         })?;
+
+        // Set the last updated time field to now
+        normal_user.last_updated_at_in_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or(Duration::new(0, 0))
+            .as_millis() as u64;
         let new_user_document: Document = bson::to_document(&normal_user).unwrap();
         Ok(new_user_document)
     } else {
-        Err(NormalizeError::ConfusedId { doc: user })
+        Err(NormalizeError::ConfusedId { doc: user.clone() })
     }
 }
 
@@ -119,7 +127,7 @@ mod tests {
             "unsubscribeId": "some-uuid".to_string()
         };
 
-        let result = normalize_user(doc_1);
+        let result = normalize_user(&doc_1);
         assert!(matches!(result, Err(NormalizeError::NullEmail { .. })));
 
         let doc_1 = doc! {
@@ -129,7 +137,7 @@ mod tests {
             "unsubscribeId": "some-uuid".to_string()
         };
 
-        let result = normalize_user(doc_1);
+        let result = normalize_user(&doc_1);
         assert!(matches!(result, Err(NormalizeError::NullEmail { .. })));
     }
 

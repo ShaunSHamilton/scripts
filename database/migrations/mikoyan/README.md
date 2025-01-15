@@ -1,5 +1,78 @@
 # Mikoyan
 
+## Testing
+
+### `mikoyan --bulk-write --batch-size 500`
+
+Docs: 331_000
+
+Docs / s: 1047
+
+```bash
+        User time (seconds): 182.48
+        System time (seconds): 11.28
+        Percent of CPU this job got: 61%
+        Elapsed (wall clock) time (h:mm:ss or m:ss): 5:16.71
+        Average shared text size (kbytes): 0
+        Average unshared data size (kbytes): 0
+        Average stack size (kbytes): 0
+        Average total size (kbytes): 0
+        Maximum resident set size (kbytes): 446568
+        Average resident set size (kbytes): 0
+        Major (requiring I/O) page faults: 1
+        Minor (reclaiming a frame) page faults: 132397
+        Voluntary context switches: 178218
+        Involuntary context switches: 27747
+        Swaps: 0
+        File system inputs: 0
+        File system outputs: 0
+        Socket messages sent: 0
+        Socket messages received: 0
+        Signals delivered: 0
+        Page size (bytes): 4096
+```
+
+### `mikoyan --batch-size 1000`
+
+Docs: 101_391
+
+Docs / s: 320
+
+```bash
+        User time (seconds): 63.96
+        System time (seconds): 30.78
+        Percent of CPU this job got: 29%
+        Elapsed (wall clock) time (h:mm:ss or m:ss): 5:16.26
+        Average shared text size (kbytes): 0
+        Average unshared data size (kbytes): 0
+        Average stack size (kbytes): 0
+        Average total size (kbytes): 0
+        Maximum resident set size (kbytes): 56900
+        Average resident set size (kbytes): 0
+        Major (requiring I/O) page faults: 0
+        Minor (reclaiming a frame) page faults: 17715
+        Voluntary context switches: 1593977
+        Involuntary context switches: 229921
+        Swaps: 0
+        File system inputs: 0
+        File system outputs: 0
+        Socket messages sent: 0
+        Socket messages received: 0
+        Signals delivered: 0
+        Page size (bytes): 4096
+        Exit status: 0
+```
+
+### `mikoyan --bulk-write --batch-size 1000`
+
+Docs: 319_000
+
+Docs / s: ~1000
+
+```bash
+
+```
+
 We have decided to not normalise the database to the point of one schema. Instead, all we **need** is all schemas to not have ambiguous data types.
 
 - Fields posed as `[]?` should be normalised to `[]`
@@ -113,3 +186,5 @@ More info:
 ```bash
 mikoyan --help
 ```
+
+### Testing Strategy
