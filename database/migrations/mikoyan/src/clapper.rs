@@ -16,10 +16,6 @@ pub struct Args {
     )]
     pub uri: String,
 
-    /// Use bulk write
-    #[arg(long, default_value = "false")]
-    pub bulk_write: bool,
-
     /// Size of the batch to read and write
     #[arg(long, default_value = "100")]
     pub batch_size: u32,

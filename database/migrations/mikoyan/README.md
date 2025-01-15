@@ -73,6 +73,46 @@ Docs / s: ~1000
 
 ```
 
+### `mikoyan --bulk-write --batch-size 1500`
+
+Docs: 501_000
+
+Docs / s: ~1000
+
+```bash
+        User time (seconds): 281.87
+        System time (seconds): 20.88
+        Percent of CPU this job got: 57%
+        Elapsed (wall clock) time (h:mm:ss or m:ss): 8:20.28
+        Average shared text size (kbytes): 0
+        Average unshared data size (kbytes): 0
+        Average stack size (kbytes): 0
+        Average total size (kbytes): 0
+        Maximum resident set size (kbytes): 5169172
+        Average resident set size (kbytes): 0
+        Major (requiring I/O) page faults: 1
+        Minor (reclaiming a frame) page faults: 1661174
+        Voluntary context switches: 128608
+        Involuntary context switches: 31292
+        Swaps: 0
+        File system inputs: 256
+        File system outputs: 0
+        Socket messages sent: 0
+        Socket messages received: 0
+        Signals delivered: 0
+        Page size (bytes): 4096
+```
+
+### `mikoyan --bulk-write --batch-size 50`
+
+```bash
+Users Processed: 15000 / 1499500 (1363 records/s)
+Users Processed: 30000 / 1499500 (1304 records/s)
+Users Processed: 45000 / 1499500 (1153 records/s)
+Users Processed: 60000 / 1499500 (1052 records/s)
+Users Processed: 75000 / 1499500 (1013 records/s)
+```
+
 We have decided to not normalise the database to the point of one schema. Instead, all we **need** is all schemas to not have ambiguous data types.
 
 - Fields posed as `[]?` should be normalised to `[]`

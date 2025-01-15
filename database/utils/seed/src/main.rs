@@ -1,11 +1,10 @@
 use futures_util::TryStreamExt;
 use mongodb::{
     bson::{doc, Document},
-    options::{ClientOptions, InsertOneModel},
+    options::{ClientOptions, FindOptions, InsertOneModel, WriteModel},
     Client, Collection, Namespace,
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
-use tokio::task::JoinHandle;
 
 pub async fn get_collection(
     uri: &str,
@@ -31,26 +30,13 @@ pub async fn get_collection(
 
 #[tokio::main]
 async fn main() -> Result<(), mongodb::error::Error> {
-    let mut handles = Vec::new();
-
-    for _ in 0..3 {
-        let handle: JoinHandle<Result<(), mongodb::error::Error>> =
-            tokio::spawn(async move { seed_users().await });
-
-        handles.push(handle);
-    }
-
-    for handle in handles {
-        if let Err(e) = handle.await {
-            eprintln!("Error: {:?}", e);
-        }
-    }
+    seed_users().await?;
 
     Ok(())
 }
 
 async fn seed_users() -> Result<(), mongodb::error::Error> {
-    let uri = "";
+    let uri = "mongodb://127.0.0.1:27017/freecodecamp?directConnection=true";
     let mut client_options = ClientOptions::parse(uri).await?;
 
     client_options.app_name = Some("Rust Mongeese".to_string());
@@ -66,52 +52,47 @@ async fn seed_users() -> Result<(), mongodb::error::Error> {
     let db = client.database("freecodecamp");
 
     let user_collection = db.collection::<Document>("user");
-    let mut cursor = user_collection.find(doc! {}).await?;
 
-    let mut rng: StdRng = StdRng::from_entropy();
+    for _ in 0..500 {
+        let find_options = FindOptions::builder().batch_size(100).build();
+        let mut cursor = user_collection
+            .find(doc! {})
+            .with_options(find_options)
+            .await?;
 
-    let mut docs = Vec::new();
+        let mut rng: StdRng = StdRng::from_entropy();
 
-    while let Some(user) = cursor.try_next().await? {
-        let mut new_user = user.clone();
+        let mut docs = Vec::new();
 
-        new_user.remove("_id");
+        while let Some(user) = cursor.try_next().await? {
+            let mut new_user = user.clone();
 
-        // Duplicate user, creating a unique email, username, and unsubscribeId
-        let c = format!("{:X}", rng.gen::<u64>());
-        let email = format!("fcc_{c}@gmail.com");
-        new_user.insert("email", email);
-        let username = format!("fcc_{c}");
-        new_user.insert("username", username);
-        let unsubscribe_id = format!("fcc_{c}");
-        new_user.insert("unsubscribeId", unsubscribe_id);
+            new_user.remove("_id");
 
-        docs.push(new_user);
+            // Duplicate user, creating a unique email, username, and unsubscribeId
+            let c = format!("{:X}", rng.gen::<u64>());
+            let email = format!("fcc_{c}@gmail.com");
+            new_user.insert("email", email);
+            let username = format!("fcc_{c}");
+            new_user.insert("username", username);
+            let unsubscribe_id = format!("fcc_{c}");
+            new_user.insert("unsubscribeId", unsubscribe_id);
 
-        if docs.len() == 100 {
-            // user_collection.insert_many(&docs).await?;
+            let insert_model = InsertOneModel::builder()
+                .namespace(Namespace::new("freecodecamp", "user2"))
+                .document(new_user)
+                .build();
 
-            let models = docs
-                .iter()
-                .map(|doc| {
-                    let model = InsertOneModel::builder()
-                        .namespace(Namespace {
-                            db: "freecodecamp".to_string(),
-                            coll: "user".to_string(),
-                        })
-                        .document(doc.clone())
-                        .build();
-                    mongodb::options::WriteModel::InsertOne(model)
-                })
-                .collect::<Vec<_>>();
-            client.bulk_write(models).await?;
+            let write_model = WriteModel::InsertOne(insert_model);
 
-            docs.clear();
-            cursor = user_collection.find(doc! {}).await?;
+            docs.push(write_model);
+
+            if docs.len() == 500 {
+                client.bulk_write(docs.clone()).await?;
+
+                docs.clear();
+            }
         }
-        // user_collection.insert_one(new_user, None).await?;
     }
-    // user_collection.insert_many(docs, None).await?;
     Ok(())
-    // Ok(docs)
 }
