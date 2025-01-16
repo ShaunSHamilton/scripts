@@ -75,10 +75,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut connect_and_process_handle =
         spawn_connect_and_process(args.clone(), connect_and_process_rx);
 
-    // Gracefully shut down tasks
-    connect_and_process_tx.send(false).unwrap();
-    change_stream_tx.send(false).unwrap();
-
     if let Some(handle) = connect_and_process_handle.take() {
         handle.await?;
     }
@@ -105,13 +101,27 @@ fn spawn_input_listener(
             match line.trim() {
                 "c" => {
                     let new_state = !*change_stream_tx.borrow();
-                    change_stream_tx.send(new_state).unwrap();
-                    println!("Change stream toggled to: {}", new_state);
+                    match change_stream_tx.send(new_state) {
+                        Ok(_) => {
+                            println!("Change stream toggled to: {}", new_state);
+                        }
+                        Err(e) => {
+                            eprintln!("Unable to toggle process due to: {e}");
+                            println!("Try again");
+                        }
+                    }
                 }
                 "n" => {
                     let new_state = !*connect_and_process_tx.borrow();
-                    connect_and_process_tx.send(new_state).unwrap();
-                    println!("Normalization toggled to: {}", new_state);
+                    match connect_and_process_tx.send(new_state) {
+                        Ok(_) => {
+                            println!("Normalization toggled to: {}", new_state);
+                        }
+                        Err(e) => {
+                            eprintln!("Unable to toggle process due to: {e}");
+                            println!("Try again");
+                        }
+                    }
                 }
                 _ => {
                     println!("Press 'c' to toggle change stream, 'n' to toggle normalization.");
@@ -130,7 +140,7 @@ fn spawn_change_stream(
             if *change_stream_rx.borrow() {
                 println!("Change stream running...");
                 tokio::select! {
-                    _ = change_stream_logic(args.clone()) => {},
+                    _ = change_stream(&args) => {},
                     _ = change_stream_rx.changed() => {
                         if !*change_stream_rx.borrow() {
                             println!("Change stream stopped.");
@@ -139,14 +149,13 @@ fn spawn_change_stream(
                     }
                 }
             } else {
-                change_stream_rx.changed().await.unwrap();
+                change_stream_rx
+                    .changed()
+                    .await
+                    .expect("Sender should not be dropped");
             }
         }
     }))
-}
-
-async fn change_stream_logic(args: Args) {
-    change_stream(args).await.unwrap()
 }
 
 fn spawn_connect_and_process(
@@ -158,7 +167,7 @@ fn spawn_connect_and_process(
             if *connect_and_process_rx.borrow() {
                 println!("Normalization running...");
                 tokio::select! {
-                    _ = connect_and_process_logic(args.clone()) => {},
+                    _ = connect_and_process(&args) => {},
                     _ = connect_and_process_rx.changed() => {
                         if !*connect_and_process_rx.borrow() {
                             println!("Normalization stopped.");
@@ -167,17 +176,16 @@ fn spawn_connect_and_process(
                     }
                 }
             } else {
-                connect_and_process_rx.changed().await.unwrap();
+                connect_and_process_rx
+                    .changed()
+                    .await
+                    .expect("Sender should not be dropped");
             }
         }
     }))
 }
 
-async fn connect_and_process_logic(args: Args) {
-    connect_and_process(&args).await.unwrap();
-}
-
-async fn change_stream(args: Args) -> Result<(), mongodb::error::Error> {
+async fn change_stream(args: &Args) -> Result<(), mongodb::error::Error> {
     let client = db::client(&args.uri).await?;
     let mut file = tokio::fs::OpenOptions::new()
         .append(true)
@@ -257,7 +265,7 @@ async fn connect_and_process(args: &Args) -> Result<(), mongodb::error::Error> {
         .open(&args.logs)
         .await?;
 
-    let mut count: u32 = 0;
+    let mut count: u64 = 0;
     let mut last_logged_milestone = 0;
     let mut write_pool = Vec::with_capacity(args.batch_size as usize);
 
@@ -270,15 +278,16 @@ async fn connect_and_process(args: &Args) -> Result<(), mongodb::error::Error> {
 
                 let filter = doc! {
                     "_id": normalized_user.get_object_id("_id").expect("all records to have _id, because normalize handles otherwise"),
+                    // TODO: Confirm, if the script is stopped, restarting will NOT result in skipping updated records.
+                    "lastUpdatedAtInMS": { "$lt": user.get_i64("lastUpdatedAtInMS").unwrap_or_default()}
                 };
 
                 // If records does not exist, insert it
-                // TODO: If the script is stopped, restarting will result in skipping updated records.
                 let update_one_model = UpdateOneModel::builder()
                     .upsert(true)
                     .namespace(namespace)
                     .filter(filter)
-                    .update(doc! { "$setOnInsert": normalized_user })
+                    .update(doc! { "$set": &normalized_user,"$setOnInsert": normalized_user })
                     .build();
 
                 let write_op = mongodb::options::WriteModel::UpdateOne(update_one_model);
@@ -287,7 +296,7 @@ async fn connect_and_process(args: &Args) -> Result<(), mongodb::error::Error> {
                 if write_pool.len() >= args.batch_size as usize {
                     let _ = client.bulk_write(write_pool.clone()).await?;
                     write_pool.clear();
-                    count += args.batch_size;
+                    count += args.batch_size as u64;
                 }
             }
             Err(normalize_error) => {
@@ -312,15 +321,11 @@ async fn connect_and_process(args: &Args) -> Result<(), mongodb::error::Error> {
             }
         }
 
-        // if count % (user_collection_size.div_ceil(100) as u32) == 0 {
-        //     println!("Users Processed: {} / {}", count, user_collection_size);
-        // }
-
         // Calculate the number of records processed per second
         // Determine the current milestone and log only if it's a new one
-        let milestone = count / (user_collection_size.div_ceil(100) as u32);
+        let milestone = count / user_collection_size.div_ceil(100);
         if milestone > last_logged_milestone {
-            let records_per_second = count / instant.elapsed().as_secs() as u32;
+            let records_per_second = count / instant.elapsed().as_secs();
             println!(
                 "Users Processed: {} / {} ({} records/s)",
                 count, user_collection_size, records_per_second

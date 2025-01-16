@@ -17,6 +17,8 @@ pub struct Args {
     pub uri: String,
 
     /// Size of the batch to read and write
+    ///
+    /// MongoDB's `batch_size` is a `u32`
     #[arg(long, default_value = "100")]
     pub batch_size: u32,
 }
