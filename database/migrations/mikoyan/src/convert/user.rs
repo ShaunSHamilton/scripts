@@ -72,6 +72,7 @@ impl<'de> serde::de::Visitor<'de> for UserVisitor {
         let mut profile_ui = None;
         let mut progress_timestamps = None;
         let mut rand = None;
+        let mut quiz_attempts = None;
         let mut saved_challenges = None;
         let mut send_quincy_email = None;
         let mut theme = None;
@@ -819,6 +820,24 @@ impl<'de> serde::de::Visitor<'de> for UserVisitor {
                         _ => None,
                     };
                 }
+                "quizAttempts" => {
+                    if quiz_attempts.is_some() {
+                        return Err(serde::de::Error::duplicate_field("quizAttempts"));
+                    }
+
+                    quiz_attempts = match map.next_value()? {
+                        Bson::Array(arr) => {
+                            let mut quiz_attempts = vec![];
+                            for value in arr {
+                                if let Ok(quiz_attempt) = bson::from_bson(value) {
+                                    quiz_attempts.push(quiz_attempt);
+                                }
+                            }
+                            Some(quiz_attempts)
+                        }
+                        _ => None,
+                    };
+                }
                 "savedChallenges" => {
                     if saved_challenges.is_some() {
                         return Err(serde::de::Error::duplicate_field("savedChallenges"));
@@ -1000,6 +1019,7 @@ impl<'de> serde::de::Visitor<'de> for UserVisitor {
         let portfolio = portfolio.unwrap_or_default();
         let profile_ui = profile_ui.unwrap_or_default();
         let progress_timestamps = progress_timestamps.unwrap_or_default();
+        let quiz_attempts = quiz_attempts.unwrap_or_default();
         let rand = rand.unwrap_or_default();
         let saved_challenges = saved_challenges.unwrap_or_default();
         let send_quincy_email = send_quincy_email.unwrap_or_default();
@@ -1062,8 +1082,9 @@ impl<'de> serde::de::Visitor<'de> for UserVisitor {
             picture,
             portfolio,
             profile_ui,
-            rand,
             progress_timestamps,
+            quiz_attempts,
+            rand,
             saved_challenges,
             send_quincy_email,
             theme,
@@ -1166,6 +1187,7 @@ mod tests {
             portfolio: Vec::default(),
             profile_ui: ProfileUI::default(),
             progress_timestamps: Vec::default(),
+            quiz_attempts: Vec::default(),
             rand: f64::default(),
             saved_challenges: Vec::default(),
             send_quincy_email: bool::default(),
@@ -1230,6 +1252,7 @@ mod tests {
             portfolio,
             profile_ui,
             progress_timestamps,
+            quiz_attempts,
             rand,
             saved_challenges,
             send_quincy_email,
@@ -1311,6 +1334,11 @@ mod tests {
                     "stamp": 16890000001i64
                 }
             ],
+            "quizAttempts": [
+                {
+                    "bad": "document"
+                }
+            ],
             "savedChallenges": [
                 {
                     "files": [],
@@ -1349,6 +1377,7 @@ mod tests {
             completed_challenges: vec![CompletedChallenge {
                 challenge_type: NOption::Undefined,
                 completed_date: 1_620_000_000_000,
+                exam_results: NOption::Null,
                 files: vec![File {
                     contents: "String".to_string(),
                     ext: "String".to_string(),
@@ -1416,6 +1445,7 @@ mod tests {
                 16890000001u64,
             ],
             rand: f64::default(),
+            quiz_attempts: vec![],
             saved_challenges: vec![SavedChallenge {
                 challenge_type: 0,
                 files: vec![],
@@ -1566,6 +1596,7 @@ mod tests {
             profile_ui,
             progress_timestamps: vec![],
             rand: 0.123456789,
+            quiz_attempts: vec![],
             saved_challenges: vec![],
             send_quincy_email: false,
             theme: "light".to_string(),
@@ -1664,6 +1695,7 @@ mod tests {
         );
         assert_eq!(doc.get_array("progressTimestamps").unwrap().len(), 0);
         assert_eq!(doc.get_f64("rand").unwrap(), 0.123456789);
+        assert_eq!(doc.get_array("quizAttempts").unwrap().len(), 0);
         assert_eq!(doc.get_array("savedChallenges").unwrap().len(), 0);
         assert_eq!(doc.get_bool("sendQuincyEmail").unwrap(), false);
         assert_eq!(doc.get_str("theme").unwrap(), "light");

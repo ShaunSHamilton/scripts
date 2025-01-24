@@ -2,7 +2,7 @@ use mongodb::{
     self,
     bson::{self, oid::ObjectId},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 #[derive(Debug, Default, PartialEq, Clone)]
@@ -74,6 +74,7 @@ pub struct User {
     #[serde(rename = "profileUI")]
     pub profile_ui: ProfileUI,
     pub progress_timestamps: Vec<u64>,
+    pub quiz_attempts: Vec<QuizAttempt>,
     pub rand: f64,
     pub saved_challenges: Vec<SavedChallenge>,
     pub send_quincy_email: bool,
@@ -91,6 +92,7 @@ pub struct User {
 pub struct CompletedChallenge {
     pub challenge_type: NOption<u32>,
     pub completed_date: u64,
+    pub exam_results: NOption<ExamResults>,
     pub files: Vec<File>,
     pub github_link: NOption<String>,
     pub id: String,
@@ -104,7 +106,7 @@ pub struct CompletedExam {
     pub challenge_type: u32,
     pub completed_date: u64,
     pub exam_results: ExamResults,
-    pub id: String,
+    pub id: ObjectId,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -182,4 +184,12 @@ pub struct File {
     pub key: String,
     pub name: String,
     pub path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct QuizAttempt {
+    challenge_id: ObjectId,
+    quiz_id: ObjectId,
+    timestamp: u64,
 }

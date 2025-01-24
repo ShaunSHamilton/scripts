@@ -1,4 +1,6 @@
-use mongodb::bson::{self, Bson};
+use std::str::FromStr;
+
+use mongodb::bson::{self, oid::ObjectId, Bson};
 use serde::Deserialize;
 
 use crate::{
@@ -77,7 +79,11 @@ impl<'de> serde::de::Visitor<'de> for CompletedExamVisitor {
                     }
 
                     id = match map.next_value()? {
-                        Bson::String(v) => Some(v),
+                        Bson::String(v) => {
+                            let id = ObjectId::from_str(&v).map_err(serde::de::Error::custom)?;
+                            Some(id)
+                        }
+                        Bson::ObjectId(v) => Some(v),
                         _ => None,
                     };
                 }

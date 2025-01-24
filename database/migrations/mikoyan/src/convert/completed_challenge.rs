@@ -21,6 +21,7 @@ impl<'de> serde::de::Visitor<'de> for CompletedChallengeVisitor {
     {
         let mut challenge_type = None;
         let mut completed_date = None;
+        let mut exam_results = None;
         let mut files = None;
         let mut github_link = None;
         let mut id = None;
@@ -52,6 +53,24 @@ impl<'de> serde::de::Visitor<'de> for CompletedChallengeVisitor {
                         Bson::Int32(v) => Some(v.to_millis()),
                         Bson::Int64(v) => Some(v.to_millis()),
                         Bson::Timestamp(v) => Some(v.to_millis()),
+                        _ => None,
+                    };
+                }
+                "examResults" => {
+                    if exam_results.is_some() {
+                        return Err(serde::de::Error::duplicate_field("examResults"));
+                    }
+
+                    exam_results = match map.next_value()? {
+                        Bson::Document(doc) => {
+                            let exam_results = bson::from_document(doc).map_err(|e| {
+                                serde::de::Error::invalid_value(
+                                    serde::de::Unexpected::Other(&e.to_string()),
+                                    &"a valid ExamResults",
+                                )
+                            })?;
+                            Some(exam_results)
+                        }
                         _ => None,
                     };
                 }
@@ -126,6 +145,7 @@ impl<'de> serde::de::Visitor<'de> for CompletedChallengeVisitor {
         let challenge_type = challenge_type.unwrap_or(NOption::Undefined);
         let completed_date =
             completed_date.unwrap_or(DateTime::now().timestamp_millis().to_millis());
+        let exam_results = exam_results.unwrap_or_default();
         let files = files.unwrap_or_default();
         let github_link = github_link.unwrap_or_default();
         let id = id.unwrap_or_default();
@@ -140,6 +160,7 @@ impl<'de> serde::de::Visitor<'de> for CompletedChallengeVisitor {
             id,
             is_manually_approved,
             solution,
+            exam_results,
         })
     }
 }

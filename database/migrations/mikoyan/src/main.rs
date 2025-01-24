@@ -21,37 +21,6 @@ use normalize::{normalize_user, NormalizeError};
 
 use clapper::Args;
 
-// #[tokio::main]
-// async fn main() -> Result<(), Error> {
-//     let args = Args::parse();
-
-//     // Start change stream before processing records to ensure no skips
-//     let change_stream_handle = tokio::spawn(change_stream(args.clone()));
-
-//     if let Err(e) = connect_and_process(&args).await {
-//         let mut file = tokio::fs::OpenOptions::new()
-//             .append(true)
-//             .create(true)
-//             .open(&args.logs)
-//             .await?;
-//         // Write errors to logs file
-//         file.write_all(format!("{}\n", e).as_bytes()).await?;
-//     };
-
-//     // Change stream continues to run until Ctrl+C is received
-//     if let Err(e) = change_stream_handle.await {
-//         let mut file = tokio::fs::OpenOptions::new()
-//             .append(true)
-//             .create(true)
-//             .open(&args.logs)
-//             .await?;
-//         // Write errors to logs file
-//         file.write_all(format!("{}\n", e).as_bytes()).await?;
-//     };
-
-//     Ok(())
-// }
-
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
