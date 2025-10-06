@@ -26,7 +26,7 @@ Migrate from one schema to another.
 All migrations live in `src/migrations` as `v<i>.rs`. In order for a migration to happen, `From<PreviousVersion>` must be implemented for `NextVersion`:
 
 ```rust
-impl From<V1MyCollection> for V2MyCollection {}
+impl From<v1::MyCollection> for v2::MyCollection {}
 ```
 
 The migrations can be simple removals / additions, where defaults just need to be set:
@@ -42,3 +42,8 @@ impl From<V1> for V2 {
 ```
 
 However, if the migrations involve data manipulation, then this _hack_ will not work. Instead, a full conversion should be implemented.
+
+Often, it is best to create a new collection per version. This allows:
+
+a. Easy rollbacks
+b. Rolling migrations

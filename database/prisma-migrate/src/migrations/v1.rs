@@ -13,20 +13,21 @@ use mongodb::bson;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::migrations::v0::V0EnvExamTemp;
+use crate::migrations::v0;
 
 prisma_rust_schema::import_types!(
-    schema_path = "https://raw.githubusercontent.com/freeCodeCamp/freeCodeCamp/main/api/prisma/schema.prisma",
-    prefix = "V1",
+    schema_path = "https://raw.githubusercontent.com/freeCodeCamp/freeCodeCamp/2366e1ab6ba929c441640dde07045f2a266cc56e/api/prisma/schema.prisma",
     derive = [Clone, Debug, Serialize, Deserialize, PartialEq],
     patch = [
-      struct V1ExamCreatorExam {
+      struct ExamCreatorExam {
         #[serde(default = "version")]
-        pub version: i64
+        pub version: i32
       },
     ],
     include = [
         "ExamCreatorExam",
+        "ExamCreatorUser",
+        "ExamEnvironmentExam",
         "ExamEnvironmentQuestionSet",
         "ExamEnvironmentMultipleChoiceQuestion",
         "ExamEnvironmentConfig",
@@ -34,16 +35,19 @@ prisma_rust_schema::import_types!(
         "ExamEnvironmentAudio",
         "ExamEnvironmentAnswer",
         "ExamEnvironmentTagConfig",
-        "ExamEnvironmentQuestionSetConfig"
+        "ExamEnvironmentQuestionSetConfig",
+        "ExamEnvironmentExamAttempt",
+        "ExamEnvironmentQuestionSetAttempt",
+        "ExamEnvironmentMultipleChoiceQuestionAttempt"
     ]
 );
 
-pub fn version() -> i64 {
+fn version() -> i32 {
     1
 }
 
-impl From<V0EnvExamTemp> for V1ExamCreatorExam {
-    fn from(v0_env_exam: V0EnvExamTemp) -> Self {
+impl From<v0::EnvExamTemp> for ExamCreatorExam {
+    fn from(v0_env_exam: v0::EnvExamTemp) -> Self {
         let json: Value = serde_json::to_value(&v0_env_exam).unwrap();
         let v1: Self = serde_json::from_value(json).unwrap();
         v1
@@ -56,16 +60,16 @@ mod v1_to_v2 {
     use mongodb::bson::oid::ObjectId;
 
     use crate::migrations::{
-        v0::{V0EnvConfig, V0EnvExamTemp},
-        v1::{V1ExamCreatorExam, V1ExamEnvironmentConfig},
+        v0,
+        v1::{ExamCreatorExam, ExamEnvironmentConfig},
     };
 
     #[test]
     fn env_exam_temp_to_exam_creator_exam() {
-        let v0 = V0EnvExamTemp {
+        let v0 = v0::EnvExamTemp {
             id: ObjectId::new(),
             question_sets: vec![],
-            config: V0EnvConfig {
+            config: v0::EnvConfig {
                 name: String::from("Test"),
                 note: String::new(),
                 tags: vec![],
@@ -79,10 +83,10 @@ mod v1_to_v2 {
         };
 
         let v0_cop = v0.clone();
-        let v1 = V1ExamCreatorExam {
+        let v1 = ExamCreatorExam {
             id: v0_cop.id,
             question_sets: vec![],
-            config: V1ExamEnvironmentConfig {
+            config: ExamEnvironmentConfig {
                 name: v0_cop.config.name,
                 note: v0_cop.config.note,
                 tags: vec![],
@@ -96,7 +100,7 @@ mod v1_to_v2 {
             version: 1,
         };
 
-        let new: V1ExamCreatorExam = v0.into();
+        let new: ExamCreatorExam = v0.into();
 
         compare_structs!(
             v1,
